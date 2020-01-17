@@ -263,10 +263,15 @@ proc ::density_dir_profile::compute { } {
 
 	    if {! [info exists hist($f,$bin)] } { 
 			set hist($f,$bin) 0.0
-			set histd($f,$bin) 0.0
+			set histdX($f,$bin) 0.0
+			set histdY($f,$bin) 0.0
+			set histdZ($f,$bin) 0.0
+
 		}
 		set hist($f,$bin) [expr $hist($f,$bin) + 1.0 ]
-		set histd($f,$bin) [expr $histd($f,$bin) + $d]
+		set histdX($f,$bin) [expr $histd($f,$bin) + [ lindex $d 0] ]
+		set histdY($f,$bin) [expr $histd($f,$bin) + [ lindex $d 1] ]
+		set histdZ($f,$bin) [expr $histd($f,$bin) + [ lindex $d 2] ]
 		
 	 }
     } else {
@@ -291,7 +296,10 @@ proc ::density_dir_profile::compute { } {
     fill_keys hist
 	if { $dp_args(rho) == "direction"  } { 
 	
-		fill_keys histd 
+		fill_keys histdX
+		fill_keys histdY
+		fill_keys histdZ
+
 		set framelist [get_framelist]
 		
 		lassign [get_x_range [array names hist]]  binmin binmax
@@ -303,18 +311,27 @@ proc ::density_dir_profile::compute { } {
 				set bin [expr $idx+$binmin]
 				if { $hist($f,$bin) > 0.0 } {
 					puts "renormalise $histd($f,$bin) by $hist($f,$bin) at frame $f and bin $bin"
-					set hist($f,$bin) [expr $histd($f,$bin)/$hist($f,$bin)]
+					set histdX($f,$bin) [expr $histdX($f,$bin)/$hist($f,$bin)]
+					set histdY($f,$bin) [expr $histdY($f,$bin)/$hist($f,$bin)]
+					set histdZ($f,$bin) [expr $histdZ($f,$bin)/$hist($f,$bin)]
+					set histDIR($f,$bin,0)=hist($f,$bin)
+					set histDIR($f,$bin,1)=histdX($f,$bin)
+					set histDIR($f,$bin,2)=histdY($f,$bin)
+					set histDIR($f,$bin,3)=histdZ($f,$bin)
 				}
 			}
 		}
-		
-		
 		
 	}
 	
     # Return histogram 
 	puts "Return histogram"
-    return [array get hist]
+	if { $dp_args(rho) == "direction"  } { 
+    	return [array get histDIR ]
+	} else {
+		return [array get hist ]
+	}
+
 
 }
 
@@ -495,7 +512,7 @@ proc ::density_dir_profile::get_dir {as} {
     #set def $dp_args(axisDef)
     
     set def "water"
-    set dir 2
+    #set dir 2
     
     puts "def = $def"
     
@@ -510,7 +527,7 @@ proc ::density_dir_profile::get_dir {as} {
 	
 	foreach myresid $residuesID {
 
-			#puts "analyse residue $myresid"
+			puts "analyse residue $myresid"
 			
 			set myOH2 [atomselect top "name OH2 and resid $myresid"]
 			set myH1 [atomselect top "name H1 and resid $myresid"]
@@ -541,11 +558,11 @@ proc ::density_dir_profile::get_dir {as} {
 			#puts "dirvec = $dirvec"
 
 			set dirnorm [ vecnorm $dirvec ]
-			#puts "dirnorm = $dirnorm"
+			puts "dirnorm = $dirnorm"
 
 			# attribute the direction on the oxygen only
 			# the hydrogen have no weight here
-			lappend res [ lindex $dirnorm  $dir]
+			lappend res $dir
 			
 			$myOH2 delete
 			$myH1 delete
