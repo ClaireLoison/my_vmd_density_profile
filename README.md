@@ -29,7 +29,7 @@ claire.loison@univ-lyon1.fr
 Fork of the projet to add the orientation of water molecules
 in the profile. Based on the initial density profile tool, but 
 instead of having the number of atoms with different weights,
-the profile give the average projection of the normalized dipole on the one axis (X,y, or Z).
+the profile give the average projection of the normalized dipole on the one axis (X,Y, or Z).
 
 
 Citation
