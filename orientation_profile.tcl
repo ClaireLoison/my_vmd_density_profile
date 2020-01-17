@@ -95,19 +95,80 @@ proc ::density_dir_profile::density_dir_profile {args} {
     # parray dp_args
 
     # Compute the bare histogram
-    set lhist [compute]
+	if { $dp_args(rho) == "direction"  } {
+		
+		array set allhist [compute]
+		
+		#puts "allhist computed "
+				
+		foreach key [array names allhist] {
+			#puts "array  allhist name = $key"  
+			set dir [lindex [split $key ,] end]
+			#puts "dir = $dir" 
+			set newkey  [string range $key 0 end-2 ]
+			#puts "newkey = $newkey"
+			switch $dir {
+				0 { 
+					lappend lhist $newkey   
+					lappend lhist $allhist($key) 
+					}
+				1 { 
+					lappend lhistX $newkey   
+					lappend lhistX $allhist($key) 
+					}
+				2 { 
+					lappend lhistY $newkey   
+					lappend lhistY $allhist($key) 
+					}
+				3 { 
+					lappend lhistZ $newkey   
+					lappend lhistZ $allhist($key) 
+					}
+			}
+		}
+		#puts " lhist = $lhist "
+		#puts " lhistX = $lhistX "
+		#puts " lhistY = $lhistY "
+		#puts " lhistZ = $lhistZ "
 
-    # Reformat the histogram and return it
-    set xbreaks [hist_to_xbreaks $lhist]
-    set framelist [get_framelist]
-    set values [hist_to_values $lhist]
+		
+		
+		# Reformat the histogram and return it
+		set xbreaks [hist_to_xbreaks $lhist]
+		set framelist [get_framelist]
+		set valuesN [hist_to_values $lhist]
+		set valuesX [hist_to_values $lhistX]
+		set valuesY [hist_to_values $lhistY]
+		set valuesZ [hist_to_values $lhistZ]
 
-    # If averaging or single-frame, flatten inner list
-    if { $dp_args(average)==1 || [llength $framelist]==1 } {
-	set values [average_sublists $values]
+		
+		# If averaging or single-frame, flatten inner list
+		if { $dp_args(average)==1 || [llength $framelist]==1 } {
+			set valuesN [average_sublists $valuesN]
+			set valuesX [average_sublists $valuesX]
+			set valuesY [average_sublists $valuesY]
+			set valuesZ [average_sublists $valuesZ]
+
+		}	
+		return [list $xbreaks $valuesN $valuesX $valuesY $valuesZ ]
+
+	} else {
+		set lhist [compute]
+		#puts " lhist = $lhist "
+		
+		# Reformat the histogram and return it
+		set xbreaks [hist_to_xbreaks $lhist]
+		set framelist [get_framelist]
+		set values [hist_to_values $lhist]
+
+		# If averaging or single-frame, flatten inner list
+		if { $dp_args(average)==1 || [llength $framelist]==1 } {
+			set values [average_sublists $values]
+		}	
+		return [list $values $xbreaks]
     }
 
-    return [list $values $xbreaks]
+
 
 }
 
@@ -213,7 +274,7 @@ proc ::density_dir_profile::compute { } {
     
     # Values
     set rho [get_rho]
-	puts "rho defined"
+	#puts "rho defined"
     
     # Build atomselection
     set as [atomselect top $dp_args(selection)]
@@ -222,24 +283,24 @@ proc ::density_dir_profile::compute { } {
 			set newselection [ append newselection " and name OH2" ]
 		    set as [atomselect top $newselection]
     }
-	puts "selection with [$as num] atoms"
+	#puts "selection with [$as num] atoms"
 
 
     # Start loop over frames
     array unset hist
     set framelist [get_framelist]
     foreach f $framelist {
-	puts "analyse frame $f"
+	#puts "analyse frame $f"
 
 	$as frame $f
 	set xval [$as get $axis]
-	puts $xval
-	puts "end xval"
+	#puts $xval
+	#puts "end xval"
 	
 	if { $dp_args(rho) == "direction"  } {
 		set dirval [ get_dir $as ]
-		puts $dirval
-		puts "end dirval"
+		#puts $dirval
+		#puts "end dirval"
 	}
 		
 	# get area now and normalize density 
@@ -248,9 +309,9 @@ proc ::density_dir_profile::compute { } {
 	set rho_norm [vecscale [expr 1./$area_now/$resolution] $rho]
 
 	# make histogram: hist(frame,bin)
-	if { $dp_args(rho) == "direction"  } {
-		puts "make histogram, [llength $xval ] [llength $rho_norm] [llength $dirval] "
-	}
+	#if { $dp_args(rho) == "direction"  } {
+		#puts "make histogram, [llength $xval ] [llength $rho_norm] [llength $dirval] "
+	#}
 	
 	#set atomnum 1
 	if { $dp_args(rho) == "direction"  } {
@@ -269,9 +330,9 @@ proc ::density_dir_profile::compute { } {
 
 		}
 		set hist($f,$bin) [expr $hist($f,$bin) + 1.0 ]
-		set histdX($f,$bin) [expr $histd($f,$bin) + [ lindex $d 0] ]
-		set histdY($f,$bin) [expr $histd($f,$bin) + [ lindex $d 1] ]
-		set histdZ($f,$bin) [expr $histd($f,$bin) + [ lindex $d 2] ]
+		set histdX($f,$bin) [expr $histdX($f,$bin) + [ lindex $d 0] ]
+		set histdY($f,$bin) [expr $histdY($f,$bin) + [ lindex $d 1] ]
+		set histdZ($f,$bin) [expr $histdZ($f,$bin) + [ lindex $d 2] ]
 		
 	 }
     } else {
@@ -290,12 +351,13 @@ proc ::density_dir_profile::compute { } {
     }
     $as delete
 	
-	puts "end histogram"
+	#puts "end histogram"
 	
     # make bins for never-seen values
     fill_keys hist
 	if { $dp_args(rho) == "direction"  } { 
 	
+		fill_keys hist
 		fill_keys histdX
 		fill_keys histdY
 		fill_keys histdZ
@@ -304,30 +366,31 @@ proc ::density_dir_profile::compute { } {
 		
 		lassign [get_x_range [array names hist]]  binmin binmax
 		set nbins [expr $binmax-$binmin+1]
-		puts "nbins = $nbins, binmin = $binmin, binmax = $binmax"
+		#puts "nbins = $nbins, binmin = $binmin, binmax = $binmax"
 		
 		foreach f $framelist {
 			for {set idx 0} {$idx<$nbins} {incr idx} {
 				set bin [expr $idx+$binmin]
 				if { $hist($f,$bin) > 0.0 } {
-					puts "renormalise $histd($f,$bin) by $hist($f,$bin) at frame $f and bin $bin"
+					#puts "renormalise histd by $hist($f,$bin) at frame $f and bin $bin"
 					set histdX($f,$bin) [expr $histdX($f,$bin)/$hist($f,$bin)]
 					set histdY($f,$bin) [expr $histdY($f,$bin)/$hist($f,$bin)]
 					set histdZ($f,$bin) [expr $histdZ($f,$bin)/$hist($f,$bin)]
-					set histDIR($f,$bin,0)=hist($f,$bin)
-					set histDIR($f,$bin,1)=histdX($f,$bin)
-					set histDIR($f,$bin,2)=histdY($f,$bin)
-					set histDIR($f,$bin,3)=histdZ($f,$bin)
 				}
+				set histDir($f,$bin,0) $hist($f,$bin)
+				set histDir($f,$bin,1) $histdX($f,$bin)
+				set histDir($f,$bin,2) $histdY($f,$bin)
+				set histDir($f,$bin,3) $histdZ($f,$bin)
 			}
 		}
 		
 	}
 	
     # Return histogram 
-	puts "Return histogram"
+	#puts "Return histogram"
 	if { $dp_args(rho) == "direction"  } { 
-    	return [array get histDIR ]
+		#puts "return =  $histDir "
+    	return [ array get histDir ] 
 	} else {
 		return [array get hist ]
 	}
@@ -374,18 +437,19 @@ proc ::density_dir_profile::transverse_area { } {
 
 
 
-
 # return the range over the 1st and 2nd dimension of a pseudo-2d array
 # e.g. {2,3 5,4 2,4} -> {3 4}
 proc ::density_dir_profile::get_x_range {kk} {    
     foreach k $kk {
 	lappend xlist [lindex [split $k ,] 1]
-    }
+#	lappend xlist [lindex [split $k ,] end]
+	}
     set xlist [lsort -uniq -integer $xlist]
     set xmin [lindex $xlist 0]
     set xmax [lindex $xlist end]
     return [list $xmin $xmax]
 }
+
 
 
 # fill histogram keys so that there is one integer bin per each value
@@ -509,12 +573,12 @@ proc ::density_dir_profile::getZ {as} {
 proc ::density_dir_profile::get_dir {as} {
     variable dp_args
     #set dir $dp_args(axisDir)
-    #set def $dp_args(axisDef)
+    set def $dp_args(axisDef)
     
-    set def "water"
+    #set def "water"
     #set dir 2
     
-    puts "def = $def"
+    #puts "def = $def"
     
 #    set attr $dp_args(Zsource)
 
@@ -527,7 +591,7 @@ proc ::density_dir_profile::get_dir {as} {
 	
 	foreach myresid $residuesID {
 
-			puts "analyse residue $myresid"
+			#puts "analyse residue $myresid"
 			
 			set myOH2 [atomselect top "name OH2 and resid $myresid"]
 			set myH1 [atomselect top "name H1 and resid $myresid"]
@@ -558,11 +622,11 @@ proc ::density_dir_profile::get_dir {as} {
 			#puts "dirvec = $dirvec"
 
 			set dirnorm [ vecnorm $dirvec ]
-			puts "dirnorm = $dirnorm"
+			#puts "dirnorm = $dirnorm"
 
 			# attribute the direction on the oxygen only
 			# the hydrogen have no weight here
-			lappend res $dir
+			lappend res $dirnorm
 			
 			$myOH2 delete
 			$myH1 delete
@@ -570,28 +634,11 @@ proc ::density_dir_profile::get_dir {as} {
 			$rest delete
 	}
 	
-    #puts "res = $res"
+   # puts "res = $res"
     return $res
 }
 puts "**************************************************"
 puts "**************************************************"
 puts "**************************************************"
 puts "**************************************************"
-
-proc pptable {l1 l2} { foreach i1 $l1 i2 $l2 { puts " [format %10.6f $i1]\t[format %10.6f $i2]" }  }
-
-set wdens [density_dir_profile -selection "water and resid 11 to 20" ]
-# - Show output as a table
-puts "**************************************************"
-puts "| Bin breaks coordinates: (z, Angstroms)"
-puts "\t| Density * projection along z of water in each bin: (number * direction/A^3)"
-pptable [lindex $wdens 1] [lindex $wdens 0]
-
-set wdir [density_dir_profile -rho direction -selection "water and resid 11 to 20" ]
-# - Show output as a table
-puts "**************************************************"
-puts "| Bin breaks coordinates: (z, Angstroms)"
-puts "\t| Density * projection along z of water in each bin: (number * direction/A^3)"
-pptable [lindex $wdir 1] [lindex $wdir 0]
-
 
