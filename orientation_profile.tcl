@@ -30,7 +30,10 @@ namespace eval ::density_dir_profile:: {
 	frame_step      1
 	average		0
 	axisDir			2
-	axisDef			water
+	axisDef			"generic"
+	refsel			"name OH2"
+	com1sel			"name OH2"
+	com2sel			"name H1 H2"
     }
     array set dp_args $dp_args_defaults
 
@@ -278,11 +281,26 @@ proc ::density_dir_profile::compute { } {
     
     # Build atomselection
     set as [atomselect top $dp_args(selection)]
-    if { $dp_args(rho) == "direction" && $dp_args(axisDef) == "water" } {
-			set newselection $dp_args(selection)
-			set newselection [ append newselection " and name OH2" ]
-		    set as [atomselect top $newselection]
+    
+    # for the direction, one takes a reference for the positions which is taken
+    # it should be a single atom per residue
+    if { $dp_args(rho) == "direction" } {
+		switch $dp_args(axisDef) {
+			"water"  {
+				set newselection $dp_args(selection)
+				set newselection [ append newselection " and name OH2" ]
+				set as [atomselect top $newselection]
+			}
+			"generic" {
+				set newselection $dp_args(selection)
+				set newselection [ append newselection " and " ]
+				set newselection [ append newselection $dp_args(refsel) ]
+				set as [atomselect top $newselection]				
+			}
+		}	
     }
+    
+    
 	#puts "selection with [$as num] atoms"
 
 
@@ -500,11 +518,23 @@ proc ::density_dir_profile::get_framelist {} {
 proc ::density_dir_profile::get_rho {} {
     variable dp_args
     set as [atomselect top $dp_args(selection)]
-	if { $dp_args(rho) == "direction" && $dp_args(axisDef) == "water" } {
-			set newselection $dp_args(selection)
-			set newselection [ append newselection " and name OH2" ]
-		    set as [atomselect top $newselection]
+    
+	if { $dp_args(rho) == "direction" } {
+		switch $dp_args(axisDef) {
+			"water"  {
+				set newselection $dp_args(selection)
+				set newselection [ append newselection " and name OH2" ]
+				set as [atomselect top $newselection]
+			}
+			"generic" {
+				set newselection $dp_args(selection)
+				set newselection [ append newselection " and " ]
+				set newselection [ append newselection $dp_args(refsel) ]
+				set as [atomselect top $newselection]				
+			}
+		}
     }
+    
     
     if { [$as num]==0 } {
 	$as delete
@@ -582,14 +612,17 @@ proc ::density_dir_profile::get_dir {as} {
     
 #    set attr $dp_args(Zsource)
 
-    if { $def != "water" } {
-		error " the direction of water only is defined. \n Implement your molecule in orientation_profile.tcl to use it" 
+    if { $def != "water" && $def != "generic"} {
+		error " Implement your molecule in orientation_profile.tcl or use the generic or water definition of dipole" 
     }
     
 	set reslength [$as num]
 	set residuesID [$as get resid]
 	
-	foreach myresid $residuesID {
+	
+	switch $def {
+	"water" {
+		foreach myresid $residuesID {
 
 			#puts "analyse residue $myresid"
 			
@@ -632,6 +665,33 @@ proc ::density_dir_profile::get_dir {as} {
 			$myH1 delete
 			$myH2 delete
 			$rest delete
+		}
+	}
+	"generic" {
+		foreach myresid $residuesID {
+
+			#puts "analyse residue $myresid"
+			
+			set sel1 [atomselect top "$dp_args(com1sel) and resid $myresid"]
+			set sel2 [atomselect top "$dp_args(com2sel) and resid $myresid"]
+			
+			set com1  [measure center $sel1]
+			#puts "com1 = $com1"
+			set com2  [measure center $sel2]
+			#puts "com2 = $com2"
+			set dirvec  [ vecsub $com2 $com2 ]
+			#puts "dirvec = $dirvec"
+			set dirnorm [ vecnorm $dirvec ]
+			#puts "dirnorm = $dirnorm"
+
+			# attribute the direction on the oxygen only
+			# the hydrogen have no weight here
+			lappend res $dirnorm
+			
+			$sel1 delete
+			$sel2 delete
+		}
+	}
 	}
 	
    # puts "res = $res"
