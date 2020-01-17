@@ -1,5 +1,5 @@
-#mol new water_pure1.psf
-#mol addfile water_pure.1.skip1000.dcd waitfor all
+mol new water_pure1.psf
+mol addfile water_pure.1.skip1000.dcd waitfor all
 
 proc pptable5file {file l1 l2 l3 l4 l5 } { foreach i1 $l1 i2 $l2  i3 $l3 i4 $l4  i5 $l5  { puts $file " [format %10.6f $i1]\t[format %10.6f $i2] \t[format %10.6f $i3] \t[format %10.6f $i4] \t[format %10.6f $i5]" }  }
 
