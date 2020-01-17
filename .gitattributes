@@ -1,0 +1,5 @@
+examples/water/water_pure.1.xsc filter=lfs diff=lfs merge=lfs -text
+examples/water/water_pure.1.xst filter=lfs diff=lfs merge=lfs -text
+examples/water/water_pure1.pdb filter=lfs diff=lfs merge=lfs -text
+examples/water/water_pure1.psf filter=lfs diff=lfs merge=lfs -text
+examples/water/water_pure.1.skip1000.dcd filter=lfs diff=lfs merge=lfs -text
